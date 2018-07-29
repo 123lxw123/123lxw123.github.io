@@ -1,0 +1,61 @@
+FROM jenkins/jenkins:2.133
+MAINTAINER engineer <engineer@kezaihui.com>
+
+USER root
+
+# install server related packages
+RUN echo "deb http://mirrors.aliyun.com/debian stretch main\ndeb http://mirrors.aliyun.com/debian stretch-updates main\ndeb http://mirrors.aliyun.com/debian-security stretch/updates main" > /etc/apt/sources.list
+RUN apt update \
+    && apt install -y python-dev python-pip vim sudo python3 python3-pip python3-dev \
+    libffi-dev default-libmysqlclient-dev libssl-dev libxml2-dev libxslt1-dev libjpeg-dev zlib1g-dev \
+    build-essential openjdk-8-jre expect git wget libc6-i386 lib32stdc++6 lib32gcc1 lib32ncurses5 lib32z1 unzip \
+    && dpkg --add-architecture i386 \
+    && apt-get autoclean && apt-get autoremove -y
+RUN pip install virtualenv -i https://mirrors.aliyun.com/pypi/simple
+# upgrade cffi to solve install fabric error
+RUN pip install --upgrade cffi -i https://mirrors.aliyun.com/pypi/simple
+RUN pip install fabric -i https://mirrors.aliyun.com/pypi/simple
+RUN pip install boto -i https://mirrors.aliyun.com/pypi/simple
+
+# install backup related packages
+RUN touch /etc/apt/sources.list.d/mysql.list \
+    && echo "deb http://repo.mysql.com/apt/debian/ stretch mysql-5.7" >> /etc/apt/sources.list.d/mysql.list \
+    && echo "deb http://repo.mysql.com/apt/debian/ stretch mysql-tools" >> /etc/apt/sources.list.d/mysql.list \
+    && apt-key adv --keyserver pgp.mit.edu --recv-keys 5072E1F5 \
+    && apt update && apt install mysql-client -y \
+    && apt-get autoclean && apt-get autoremove -y
+RUN pip3 install oss2==2.3.3 -i https://pypi.doubanio.com/simple
+RUN pip3 install qingstor-sdk==2.2.4 -i https://pypi.doubanio.com/simple
+
+# 使用淘宝镜像安装Node.js v8.9.2
+RUN wget https://npm.taobao.org/mirrors/node/v8.9.2/node-v8.9.2-linux-x64.tar.gz && \
+    tar -C /usr/local --strip-components 1 -xzf node-v8.9.2-linux-x64.tar.gz && \
+    rm node-v8.9.2-linux-x64.tar.gz
+
+RUN npm install bower grunt-cli -g --registry=https://tnt.kezaihui.com
+
+ENV JAVA_HOME /usr/lib/jvm/java-1.8.0-openjdk-amd64
+
+# Install android sdk 
+RUN mkdir -p opt/android/sdk \
+    && chown -R jenkins.jenkins /opt/android/sdk \
+    && cd opt/android/sdk/ \
+    && curl https://dl.google.com/android/repository/sdk-tools-linux-3859397.zip -o android-sdk.zip && sudo unzip android-sdk.zip -d . && sudo rm android-sdk.zip \
+    && yes | ./tools/bin/sdkmanager --licenses \
+    && sudo ./tools/bin/sdkmanager "tools" \
+    && sudo ./tools/bin/sdkmanager "build-tools;27.0.3" "build-tools;26.0.2" "build-tools;26.0.1" "build-tools;25.0.3" "build-tools;25.0.2" "build-tools;25.0.1" "build-tools;25.0.0" "build-tools;23.0.1" "platforms;android-27" "platforms;android-26" "platforms;android-25" "platforms;android-23" "extras;android;m2repository" "extras;google;m2repository" --no_https \
+    && sudo ./tools/bin/sdkmanager "extras;m2repository;com;android;support;constraint;constraint-layout-solver;1.0.2" "extras;m2repository;com;android;support;constraint;constraint-layout;1.0.2" --no_https \
+    && sudo ./tools/bin/sdkmanager --list 
+
+# Setup environment
+ENV ANDROID_HOME /opt/android/sdk
+ENV PATH ${PATH}:${ANDROID_HOME}/tools/bin:${ANDROID_HOME}/tools:${ANDROID_HOME}/platform-tools
+
+RUN echo ANDROID_HOME="$ANDROID_HOME" >> /etc/environment
+
+# Install h-toolbox
+RUN echo $'_auth=emFpaHVpOndvY2FvNDA0\nregistry=https://tnt.kezaihui.com/\nemail=engineer@kezaihui.com\n//tnt.kezaihui.com/:_authToken="ieQtdt2LddesTEv8VOy9Tw=="\n' > ~/.npmrc
+RUN npm install -g h-toolbox --registry=https://tnt.kezaihui.com
+
+# drop back to the regular jenkins user - good practice
+USER jenkins
