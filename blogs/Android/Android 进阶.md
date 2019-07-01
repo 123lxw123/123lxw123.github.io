@@ -65,3 +65,16 @@ App 启动分为冷启动、温启动、热启动；冷启动是指 App 进程�
 6. 压缩图片
 7. 统一风格，重复利用资源
 8. 使用 Android 系统资源
+
+## Android 事件分发
+
+![image-20190701205434668](/Users/lixiongwen/Library/Application Support/typora-user-images/image-20190701205434668.png)
+
+# requestLayout 和 invalidate 的区别
+
+1. requestLayout 会回调 View 的 onMeasure()、onLayout()、onDraw() 方法
+2. invalidate 只会回调 View 的 onDraw()，postInvalidate 基本一致，但可在非 UI 线程调用
+
+# 进程间通信方式
+
+![image-20190701215049679](/Users/lixiongwen/Library/Application Support/typora-user-images/image-20190701215049679.png)
