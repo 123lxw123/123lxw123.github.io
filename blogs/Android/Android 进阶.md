@@ -2,7 +2,7 @@
 
 App 启动分为冷启动、温启动、热启动；冷启动是指 App 进程需要重新开始创建，温启动是指 App 视图已经被回收，但是进程还存活着，热启动是指 App 进程、视图都存活，例如从后台切换至前台。
 
-1. Application 创建回调方法尽量减少耗时操作或者改成异步、延迟操作，例如初始化数据库、SDK 等
+1. Application 创建回调方法尽量减少耗时操作或者改成异步、延迟操作，例如初始化数据库、SDK 等，多进程 App 根据需要加载第三方 SDK
 2. Launch Activity 创建回调方法尽量减少耗时操作或者改成异步、延迟操作，简化视图复杂度，例如减少布局层次。
 3. Launch Activity 设置主题背景，提升用户体验
 
@@ -78,3 +78,54 @@ App 启动分为冷启动、温启动、热启动；冷启动是指 App 进程�
 # 进程间通信方式
 
 ![image-20190701215049679](/Users/lixiongwen/Library/Application Support/typora-user-images/image-20190701215049679.png)
+
+# Activity 启动流程
+
+![image](https://camo.githubusercontent.com/7abdc45b408bb2f7e65decb20a09c4b336a2b9c0/687474703a2f2f696d672e6d702e6974632e636e2f75706c6f61642f32303137303332392f63613935363763653362663034633461626462346431323463656266656537365f74682e6a706567)
+
+# Android APK 安装大致流程
+
+![image](https://github.com/guoxiaoxing/android-open-source-project-analysis/raw/master/art/app/package/apk_install_structure.png)
+
+# Android APK 打包流程
+
+![image](https://github.com/guoxiaoxing/android-open-source-project-analysis/raw/master/art/native/vm/apk_package_flow.png)
+
+# JVM、Dalvik、ART 虚拟机区别
+
+#### JVM 和Dalvik虚拟机的区别
+
+JVM:.java -> javac -> .class -> jar -> .jar
+
+架构: 堆和栈的架构.
+
+DVM:.java -> javac -> .class -> dx.bat -> .dex
+
+架构: 寄存器(cpu上的一块高速缓存)
+
+#### Android2个虚拟机的区别（一个5.0之前，一个5.0之后）
+
+什么是Dalvik：Dalvik是Google公司自己设计用于Android平台的Java虚拟机。Dalvik虚拟机是Google等厂商合作开发的Android移动设备平台的核心组成部分之一，它可以支持已转换为.dex(即Dalvik Executable)格式的Java应用程序的运行，.dex格式是专为Dalvik应用设计的一种压缩格式，适合内存和处理器速度有限的系统。Dalvik经过优化，允许在有限的内存中同时运行多个虚拟机的实例，并且每一个Dalvik应用作为独立的Linux进程执行。独立的进程可以防止在虚拟机崩溃的时候所有程序都被关闭。
+
+什么是ART:Android操作系统已经成熟，Google的Android团队开始将注意力转向一些底层组件，其中之一是负责应用程序运行的Dalvik运行时。Google开发者已经花了两年时间开发更快执行效率更高更省电的替代ART运行时。ART代表Android Runtime,其处理应用程序执行的方式完全不同于Dalvik，Dalvik是依靠一个Just-In-Time(JIT)编译器去解释字节码。开发者编译后的应用代码需要通过一个解释器在用户的设备上运行，这一机制并不高效，但让应用能更容易在不同硬件和架构上运行。ART则完全改变了这套做法，在应用安装的时候就预编译字节码为机器语言，这一机制叫Ahead-Of-Time(AOT)编译。在移除解释代码这一过程后，应用程序执行将更有效率，启动更快。
+
+ART优点：
+
+- 系统性能的显著提升。
+- 应用启动更快、运行更快、体验更流畅、触感反馈更及时。
+- 更长的电池续航能力。
+- 支持更低的硬件。
+
+ART缺点：
+
+- 更大的存储空间占用，可能会增加10%-20%。
+- 更长的应用安装时间。
+
+# 资源文件与资源 ID 映射原理
+
+在编译的时候，AAPT会扫描你所定义的所有资源（在不同文件中定义的以及单独的资源文件），然后给它们指定不同的资源ID。
+资源ID 是一个32bit的数字，格式是PPTTNNNN ， PP代表资源所属的包(package) ,TT代表资源的类型(type)，NNNN代表这个类型下面的资源的名称。 对于应用程序的资源来说，PP的取值是0×7f。
+TT 和NNNN 的取值是由AAPT工具随意指定的–基本上每一种新的资源类型的数字都是从上一个数字累加的（从1开始）；而每一个新的资源条目也是从数字1开始向上累加的。
+
+注意的是，AAPT在每一次编译的时候不会去保存上一次生成的资源ID标示，每当/res目录发生变化的时候，AAPT可能会去重新给资源指定ID号，然后重新生成一个R.java文件。因此，在做开发的时候，你不应该在程序中将资源ID持久化保存到文件或者数据库。而资源ID在每一次编译后都有可能变化。
+一旦资源被编译成二进制文件的时候，AAPT会生成R.java 文件和“resources.arsc”文件，“R.java”用于代码的编译，而”resources.arsc”则包含了全部的资源名称、资源ID和资源的内容（对于单独文件类型的资源，这个内容代表的是这个文件在其.apk 文件中的路径信息）。这样就把运行环境中的资源ID 和具体的资源对应起来了。
