@@ -498,3 +498,106 @@ ExecutorService线程池就提供了shutdown和shutdownNow这样的生命周期�
 - 新产生的对象优先进去Eden区，当Eden区满了之后再使用Survivor from，当Survivor from 也满了之后就进行Minor GC（新生代GC），将Eden和Survivor from中存活的对象copy进入Survivor to，然后清空Eden和Survivor from，这个时候原来的Survivor from成了新的Survivor to，原来的Survivor to成了新的Survivor from。复制的时候，如果Survivor to 无法容纳全部存活的对象，则根据老年代的分配担保（类似于银行的贷款担保）将对象copy进去老年代，如果老年代也无法容纳，则进行Full GC（老年代GC）。
 - 大对象直接进入老年代：JVM中有个参数配置-XX:PretenureSizeThreshold，令大于这个设置值的对象直接进入老年代，目的是为了避免在Eden和Survivor区之间发生大量的内存复制。
 - 长期存活的对象进入老年代：JVM给每个对象定义一个对象年龄计数器，如果对象在Eden出生并经过第一次Minor GC后仍然存活，并且能被Survivor容纳，将被移入Survivor并且年龄设定为1。没熬过一次Minor GC，年龄就加1，当他的年龄到一定程度（默认为15岁，可以通过XX:MaxTenuringThreshold来设定），就会移入老年代。但是JVM并不是永远要求年龄必须达到最大年龄才会晋升老年代，如果Survivor 空间中相同年龄（如年龄为x）所有对象大小的总和大于Survivor的一半，年龄大于等于x的所有对象直接进入老年代，无需等到最大年龄要求。
+
+# 停止线程
+
+## Thread
+
+public void interrupt() 
+① 如果线程处于被阻塞状态（例如处于sleep, wait, join 等状态），那么线程将立即退出被阻塞状态，并抛出一个InterruptedException异常。仅此而已。
+② 如果线程处于正常活动状态，那么会将该线程的中断标志设置为 true，仅此而已。被设置中断标志的线程将继续正常运行，不受影响。
+
+public boolean isInterrupted() 
+判断调用者线程的中断状态。
+
+public static boolean interrupted 
+只能通过Thread.interrupted()调用。它会做两步操作：
+
+1. 返回当前线程的中断状态；
+2. 将当前线程的中断状态设为false；
+
+### 四个废弃方法
+
+```java
+// 挂起线程，由于挂起状态依然保持锁，容易产生死锁，被废弃
+@Deprecated
+    public final void suspend() {
+        throw new UnsupportedOperationException();
+```
+
+```java
+// 恢复线程，与挂起相对应，被废弃
+@Deprecated
+    public final void resume() {
+        throw new UnsupportedOperationException();
+    }
+```
+
+```java
+// 停止线程，即刻抛出ThreadDeath异常，释放该线程所持有的所有的锁，容易造成程序出现不可预料的异常，被废弃
+@Deprecated
+    public final void stop(Throwable obj) {
+        throw new UnsupportedOperationException();
+    }
+```
+
+```java
+// 为销毁线程设计，不会释放该线程所持有的所有的锁，从来没实现，被废弃
+@Deprecated
+    public void destroy() {
+        throw new UnsupportedOperationException();
+    }
+```
+
+所以停止线程的正确方式应该是这样的
+
+```kotlin
+crawlScheduledThread = Thread {
+            try {
+                while (!Thread.interrupted()) {
+                    // do some thing
+                  	// 如果是耗时操作，可以分步执行，每步之间检查下
+                    // checkIsInterrupted()
+                }
+            } catch (e: InterruptedException) {
+            }
+        }
+        crawlScheduledThread?.start()
+          
+     private fun checkIsInterrupted() {
+        if (Thread.interrupted()) {
+            LogUtil.consoleLog("触发中断", isWriteToFile = true)
+            throw InterruptedException()
+        }
+    }
+
+// 调用 thread.interrupt() 抛出 InterruptedException 异常或者打上中断标识
+crawlScheduledThread?.interrupt()
+```
+
+### Timer 和 ExecutorService
+
+- timer.cancel() 和 executorService.shutdown() 作用类似，拒绝新任务，清空任务队列，会执行完正在运行的任务
+- executorService.shutdownNow()
+
+
+
+# Error和Exception
+
+Error和Exception的联系
+继承结构：Error和Exception都是继承于Throwable，RuntimeException继承自Exception。
+
+Error和RuntimeException及其子类称为未检查异常（Unchecked exception），其它异常成为受检查异常（Checked Exception）。
+
+Error和Exception的区别
+Error类一般是指与虚拟机相关的问题，如系统崩溃，虚拟机错误，内存空间不足，方法调用栈溢出等。如java.lang.StackOverFlowError和Java.lang.OutOfMemoryError。对于这类错误，Java编译器不去检查他们。对于这类错误的导致的应用程序中断，仅靠程序本身无法恢复和预防，遇到这样的错误，建议让程序终止。
+
+Exception类表示程序可以处理的异常，可以捕获且可能恢复。遇到这类异常，应该尽可能处理异常，使程序恢复运行，而不应该随意终止异常。
+
+运行时异常和受检查的异常
+Exception又分为运行时异常（Runtime Exception）和受检查的异常(Checked Exception )。
+
+RuntimeException：其特点是Java编译器不去检查它，也就是说，当程序中可能出现这类异常时，即使没有用try……catch捕获，也没有用throws抛出，还是会编译通过，如除数为零的ArithmeticException、错误的类型转换、数组越界访问和试图访问空指针等。处理RuntimeException的原则是：如果出现RuntimeException，那么一定是程序员的错误。
+
+受检查的异常（IOException等）：这类异常如果没有try……catch也没有throws抛出，编译是通不过的。这类异常一般是外部错误，例如文件找不到、试图从文件尾后读取数据等，这并不是程序本身的错误，而是在应用环境中出现的外部错误。
+
