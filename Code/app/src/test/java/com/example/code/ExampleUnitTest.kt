@@ -240,6 +240,36 @@ class ExampleUnitTest {
         return receiveRain(list, maxIndex, newTotal)
     }
 
+    /**
+     *  反转链表
+     *
+     *  https://blog.csdn.net/jsqfengbao/article/details/47187709
+     */
+    private fun reverseLinkedList(linkedNode: LinkedNode?): LinkedNode? {
+        if (linkedNode == null) {
+            return linkedNode
+        } else {
+            var prevLinkedNode = linkedNode
+            while (prevLinkedNode != null) {
+                val currentLinkedNode = prevLinkedNode.next
+                if (currentLinkedNode != null) {
+                    val nextLinkedNode = currentLinkedNode.next
+                    currentLinkedNode.next = prevLinkedNode
+                    prevLinkedNode = nextLinkedNode
+                }
+            }
+            val header = LinkedNode()
+            header.next = prevLinkedNode
+            return header
+        }
+    }
+
+    class LinkedNode {
+        var prev: LinkedNode? = null
+        var next: LinkedNode? = null
+        var data: Any? = null
+    }
+
     @Test
     fun main() {
 //        val list = mutableListOf(30, 10, 28, 14, 36, 10, 100, 32)
