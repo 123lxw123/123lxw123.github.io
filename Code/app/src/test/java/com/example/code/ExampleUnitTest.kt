@@ -245,29 +245,61 @@ class ExampleUnitTest {
      *
      *  https://blog.csdn.net/jsqfengbao/article/details/47187709
      */
-    private fun reverseLinkedList(linkedNode: LinkedNode?): LinkedNode? {
-        if (linkedNode == null) {
-            return linkedNode
+    private fun reverseLinkedList(linkedNode: LinkedNode<Any>?): LinkedNode<Any>? {
+        return if (linkedNode == null) {
+            linkedNode
         } else {
-            var prevLinkedNode = linkedNode
-            while (prevLinkedNode != null) {
-                val currentLinkedNode = prevLinkedNode.next
-                if (currentLinkedNode != null) {
-                    val nextLinkedNode = currentLinkedNode.next
-                    currentLinkedNode.next = prevLinkedNode
-                    prevLinkedNode = nextLinkedNode
-                }
+            var prevLinkedNode: LinkedNode<Any>? = null
+            var currentLinkedNode = linkedNode
+            while (currentLinkedNode != null) {
+                val nextLinkedNode = currentLinkedNode.next
+                currentLinkedNode.next = prevLinkedNode
+                prevLinkedNode = currentLinkedNode
+                currentLinkedNode = nextLinkedNode
             }
-            val header = LinkedNode()
-            header.next = prevLinkedNode
-            return header
+            prevLinkedNode
         }
     }
 
-    class LinkedNode {
-        var prev: LinkedNode? = null
-        var next: LinkedNode? = null
-        var data: Any? = null
+    data class LinkedNode<T>(
+        var data: T? = null,
+        var prev: LinkedNode<T>? = null,
+        var next: LinkedNode<T>? = null
+    )
+
+    /**
+     * 两数之和
+     *
+     * https://blog.csdn.net/biezhihua/article/details/79437867
+     */
+    private fun twoNumberSum(
+        firstHeadNode: LinkedNode<Int>,
+        secondHeadNode: LinkedNode<Int>
+    ): LinkedNode<Int> {
+        var carry = 0
+        var headNode: LinkedNode<Int>? = null
+        var currentNode: LinkedNode<Int>? = null
+        var firstCurrentNode: LinkedNode<Int>? = firstHeadNode
+        var secondCurrentNode: LinkedNode<Int>? = secondHeadNode
+        while (firstCurrentNode != null || secondCurrentNode != null || carry > 0) {
+            var sum = (firstCurrentNode?.data ?: 0) + (secondCurrentNode?.data ?: 0) + carry
+            if (sum >= 10) {
+                carry = sum / 10
+                sum %= 10
+            } else {
+                carry = 0
+            }
+            if (headNode == null) {
+                headNode = LinkedNode(data = sum)
+                currentNode = headNode
+            } else {
+                currentNode?.next = LinkedNode(data = sum)
+                currentNode = currentNode?.next
+            }
+            firstCurrentNode = firstCurrentNode?.next
+            secondCurrentNode = secondCurrentNode?.next
+        }
+        return headNode!!
     }
 
     @Test
@@ -291,7 +323,16 @@ class ExampleUnitTest {
 //        val index = searchIndex(listOf(1, 2, 3, -3, -2, -1, 0), -3)
 //        System.out.println(index)
 
-        val total = receiveRain(listOf(0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1), 0, 0)
-        System.out.println(total)
+//        val total = receiveRain(listOf(0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1), 0, 0)
+//        System.out.println(total)
+
+//        val firstHeadNode = LinkedNode(2)
+//        firstHeadNode.next = LinkedNode(4)
+//        firstHeadNode.next?.next = LinkedNode(3)
+//        val secondHeadNode = LinkedNode(5)
+//        secondHeadNode.next = LinkedNode(6)
+//        secondHeadNode.next?.next = LinkedNode(4)
+//        val result = twoNumberSum(firstHeadNode, secondHeadNode)
+//        System.out.println(result.next?.next?.data.toString() + result.next?.data.toString() + result.data.toString())
     }
 }
